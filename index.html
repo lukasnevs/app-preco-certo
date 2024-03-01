@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Compras</title>
+    <style>
+        body {
+            font-family: "Century Gothic", sans-serif;
+            background-color: rgb(26, 188, 155); /* Cor de fundo verde azulado */
+            color: black;
+            font-weight: bold; /* Fonte bold preta */
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #itemList {
+            margin-bottom: 20px;
+        }
+        .item-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .item-text {
+            flex: 1;
+        }
+        button {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: rgb(45, 62, 80); /* Cor azul escuro */
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Lista de Compras</h1>
+        <div id="itemList">
+            <!-- Lista de itens adicionados -->
+        </div>
+        <div id="totalPrice">Total: R$ 0.00</div>
+        <button id="addItemBtn">Adicionar Item por Voz</button>
+        <button id="calculateTotalBtn">Calcular Total</button>
+        <button id="deleteItemBtn">Apagar Item por Voz</button>
+        <button id="searchItemBtn">Buscar Item por Voz</button>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            let items = [];
+            let recognition;
+
+            // Função para iniciar o reconhecimento de voz
+            function startVoiceRecognition(callback) {
+                recognition = new webkitSpeechRecognition();
+                recognition.lang = "pt-BR";
+                recognition.continuous = true;
+
+                recognition.onresult = function(event) {
+                    const transcript = event.results[event.results.length - 1][0].transcript.trim();
+                    if (transcript !== "") {
+                        callback(transcript);
+                    }
+                };
+
+                recognition.start();
+            }
+
+            // Função para parar o reconhecimento de voz
+            function stopVoiceRecognition() {
+                if (recognition) {
+                    recognition.stop();
+                }
+            }
+
+            // Função para adicionar um item à lista por voz
+            $("#addItemBtn").click(function() {
+                startVoiceRecognition(addItemName);
+            });
+
+            // Função para adicionar o nome do item à lista
+            function addItemName(transcript) {
+                const itemName = transcript;
+                startVoiceRecognition(addItemPrice.bind(null, itemName));
+            }
+
+            // Função para adicionar o preço do item à lista
+            function addItemPrice(itemName, transcript) {
+                // Separa os números pronunciados antes e depois do ponto
+                const parts = transcript.split("e");
+                const beforePoint = parts[0].trim();
+                const afterPoint = parts[1].trim();
+
+                // Combina os números antes e depois do ponto para formar o preço
+                const price = parseFloat(beforePoint) + parseFloat(`0.${afterPoint}`); 
+
+                if (!isNaN(price)) {
+                    addItemToList(itemName, price);
+                } else {
+                    alert("Formato de preço inválido.");
+                }
+            }
+
+            // Função para adicionar o item à lista com o preço
+            function addItemToList(itemName, price) {
+                const itemText = $("<div>").addClass("item-text").text(`${itemName} - R$ ${price.toFixed(2)}`);
+                const itemContainer = $("<div>").addClass("item-container").append(itemText);
+
+                $("#itemList").append(itemContainer);
+                items.push({ name: itemName, price: price });
+            }
+
+            // Função para calcular o preço total dos itens
+            $("#calculateTotalBtn").click(function() {
+                let totalPrice = 0;
+                items.forEach(item => {
+                    totalPrice += item.price;
+                });
+
+                $("#totalPrice").text(`Total: R$ ${totalPrice.toFixed(2)}`);
+            });
+
+            // Função para apagar um item da lista por voz
+            $("#deleteItemBtn").click(function() {
+                startVoiceRecognition(deleteItem);
+            });
+
+            // Função para apagar um item da lista
+            function deleteItem(itemName) {
+                const index = items.findIndex(item => item.name.toLowerCase() === itemName.toLowerCase());
+                if (index !== -1) {
+                    items.splice(index, 1);
+                    updateItemList();
+                    alert(`Item "${itemName}" apagado com sucesso.`);
+                    stopVoiceRecognition(); // Parar o reconhecimento de voz após apagar o item
+                } else {
+                    alert(`Item "${itemName}" não encontrado na lista.`);
+                }
+            }
+
+            // Função para atualizar a lista de itens na interface
+            function updateItemList() {
+                $("#itemList").empty();
+                items.forEach(item => {
+                    const itemText = $("<div>").addClass("item-text").text(`${item.name} - R$ ${item.price.toFixed(2)}`);
+                    const itemContainer = $("<div>").addClass("item-container").append(itemText);
+                    $("#itemList").append(itemContainer);
+                });
+            }
+
+            // Função para buscar um item na lista por voz
+            $("#searchItemBtn").click(function() {
+                startVoiceRecognition(searchItem);
+            });
+
+            // Função para buscar um item na lista
+            function searchItem(itemName) {
+                const foundItem = items.find(item => item.name.toLowerCase() === itemName.toLowerCase());
+                if (foundItem) {
+                    const itemDiv = $("#itemList").find(`div:contains(${foundItem.name})`);
+                    itemDiv.css("background-color", "lightgreen");
+                } else {
+                    alert("Item não encontrado na lista.");
+                }
+            }
+        });
+    </script>
+</body>
+</html>
